@@ -7,7 +7,7 @@ const Exchange = require ('./build/Exchange.json');
 // const instance = new web3.eth.Contract
 const instance =  new web3.eth.Contract(
     JSON.parse(Exchange.interface), //ABI
-    '0x788eDe2Dc09010D56c5bD647243a0C30893fa904'  
+    '0xEA900a25A6f0E8129Cbf26DEaf10d221176ad104'  
                                                   //after deploy.js jo contract create hua hai
 );
 

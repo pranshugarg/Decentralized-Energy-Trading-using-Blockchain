@@ -1,23 +1,17 @@
 const express = require('express');
 const fs = require('fs');
 const app = express();
-
+const dd = require('./API.json');
 const simulation = require('./simulation');
-
+app.use(express.static('public'));
 let ret = null;
 
 async function run() {
 	if(ret === null) 
 	ret = await simulation();
 
-	if(ret===undefined || ret===null){
-		console.log("Undefined returned by simulation");
-	}
-
-	fs.writeFileSync('./result.json', JSON.stringify(ret),  'utf8'
-	,
+	fs.writeFileSync('./result.json', JSON.stringify(ret),  'utf8' ,
 	err => {
-	console.log("Stuck after simulation. Object not in results :/")
 	if(err) {
 			console.log('Cant write to file: ', err);
 	} else {
@@ -29,22 +23,11 @@ async function run() {
 console.log("Object written successfully :/")
 }
 
-run();
+//run();
+// uncomment to run simulation and form json file 
 
-app.use(async (req, res) => {
-	if(ret === null || ret === undefined) {
-		console.log('Object NI aaya ');
-		res.status(500).json({
-			success: false,
-			message: 'Sorry'
-		});
-		return;
-	}
-	
-	res.status(200).json({
-		success: true,
-		data: 'Saved'
-	});
+app.use('/data', async (req, res) => {
+	res.status(200).json(dd);
 });
 
 const PORT = 9000;

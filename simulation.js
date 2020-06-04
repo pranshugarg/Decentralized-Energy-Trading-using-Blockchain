@@ -36,9 +36,7 @@ async function createAgents(householdHistoricData, batteryCapacity, batteryBool)
 
             agent = new Agent(batteryCapacity, batteryBool); //constructor of class from prosumer
         
-            agentAccount = await agent.getAccount(i%10);
-
-            //console.log("gotAccount" + i);
+            agentAccount = await agent.getAccount(i%10); //i%10
 
             await agent.loadSmartMeterData(householdHistoricData[i-1], i);  //historic demand and supply
                                                //       ( (i-1)th csv file   , i is houseHoldId) 
@@ -85,17 +83,10 @@ async function clearMarket() {  //remove all bids and asks
     let asksCount = await exchange.methods.getAsksCount().call();
     let accounts = await web3.eth.getAccounts();
 
-    for (let i = bidsCount - 1; i >= 0; i--) {
-        await exchange.methods.removeBid(i).send({ from: accounts[accounts.length-3], gas: '2000000' });
-        bidsCount = await exchange.methods.getBidsCount().call();
-    }
-    for (let i = asksCount - 1; i >= 0; i--) {
-        await exchange.methods.removeAsk(i).send({ from: accounts[accounts.length-3],  gas: '2000000'});
-        asksCount = await exchange.methods.getAsksCount().call();
-    }
-    
-    bidsCount = await exchange.methods.getBidsCount().call();
-    asksCount = await exchange.methods.getAsksCount().call();
+    await exchange.methods.clearMarket().send({
+        from: accounts[ Math.floor(Math.random() * accounts.length)  ], //accounts.length-3
+        gas: '2000000'
+    });
 }
 
 //n-1 n-1 bheja as indices
@@ -135,7 +126,7 @@ async function matchBids(bid_index, ask_index, bids, asks, agentsBattery, inters
         
         asks[ask_index].amount = remainder; //seller has amount of charge left
 
-        if(remainder == 0){asks.splice(ask_index, 1); }
+        if(remainder == 0){ asks.splice(ask_index, 1); }
         bids.splice(bid_index, 1); //bid ka hamesha pura charge mil gya
         return (matchBids(bids.length-1, asks.length-1, bids, asks, agentsBattery, intersection)); 
     }
@@ -145,9 +136,7 @@ async function init() {
     let unFilledBids = new Array(); let unFilledAsks = new Array();
     let aggregatedDemand = new Array(); let aggregatedSupply = new Array();
     let historicalPricesPlot = new Array();
-    // let nationalGridBalanceHistory = new Array();
-    // let amountBidsPerT = new Array(); // let amountAsksPerT = new Array();
-
+    
     console.log("Inside init() function");
     var accounts = await web3.eth.getAccounts();
     
@@ -162,15 +151,17 @@ async function init() {
     //last account selected as National Grid
 
     let dataToReturnApi = [];
-    
+    dataToReturnApi.nationalGridAddress = nationalGridAddress; 
+    dataToReturnApi.NATIONAL_GRID_PRICE = NATIONAL_GRID_PRICE;
+
     let timeArray= new Array();
     console.log(`using ${agentsBattery.length} amount of agents`);
     console.log('starting simulation');
 
-    for (let i= 2184; i < 2190 ; i++) {
+    for (let i= 2184; i < 2584 ; i++) {
         timeArray.push(i); console.log('time', i);
-        let retData = {};
-        retData.time = i;
+        let retData = {};  retData.time = i;
+        let agentPurchaseLogic = [];
 
         for (let j = 0; j < agentsBattery.length; j++){
             agentsBattery[j].agent.setCurrentTime(i);   
@@ -179,11 +170,11 @@ async function init() {
             if( i == 2184){ await agentsBattery[j].agent.setNationalGrid(NATIONAL_GRID_PRICE, nationalGridAddress); }
             try{
                 let pc = await agentsBattery[j].agent.purchaseLogic(); //purchase logic
-                retData.purchaseLogic = pc;
-            }        //purchase logic
+                agentPurchaseLogic.push(pc);
+            }        
             catch(err){ console.log('error from purchase logic', err); }
         }
-        
+        retData.purchaseLogic = agentPurchaseLogic;
         let { bids, asks } = await getExchangeBids();        
        
         console.log("exchanged");
@@ -230,29 +221,17 @@ async function init() {
 
             for (let i=0; i < bids.length; i++){ //if ask.length=1, nobody ready to sell
                 unFilledBids.push(bids[i]); 
-                let bidFill = {};  bidFill.type = 'Bid';
                 
                 let obj = agentsBattery.find(function (obj) { return obj.agentAccount === bids[i].address; });//return bid object
                 
-                bidFill.agent = obj; bidFill.fullfill = '' 
-
                 obj.agent.unfilledOrdersProcess();  //i.e. buy rest(extra) from NationalGrid
-                fullfill.push(bidFill);
             }
 
             for (let i=0; i < asks.length; i++) { //if bid.length=1, nobody to buy
                 unFilledAsks.push(asks[i]);
-                let askFill = {}; askFill.type = 'Ask';
-                let obj = agentsBattery.find(function (obj) { return obj.agentAccount === asks[i].address; });
-                
-                askFill.agent = obj; askFill.fullfill = ''
-
-                askFill.chargeBattery = asks[x].amount;
+                let obj = agentsBattery.find(function (obj) { return obj.agentAccount === asks[i].address; });  
                 obj.agent.charge(asks[i].amount); //charge own battery from rest(extra energy not sold)
-                fullfill.push(askFill);              
             }
-
-            retData.fullfillLessThanTwo = fullfill;
 
             for (let j = 0; j < agentsBattery.length; j++) {
                 agentsBattery[j].agent.historicalPrices[i] = 0;  // no exchange thus price=0
@@ -286,7 +265,7 @@ async function init() {
     let agent;  let simulationCSV = new Array(); let csvData = new Array();
     const sumPrices= history.reduce((a, b) => a + b, 0);// no use
 
-    for (let i= 2184; i < 2190; i++) {   //Calculating Parameters from simulation to plot
+    for (let i= 2184; i < 2584; i++) {   //Calculating Parameters from simulation to plot
         let demand = new Array();     let supply = new Array();
         let gasCostBids = new Array(); let gasCostAsks = new Array();
         let nationalGridBidsGas = new Array();
@@ -296,9 +275,7 @@ async function init() {
         historicalPricesPlot[i] = convertWeiToDollars(agentsBattery[0].agent.historicalPrices[i], WEI_IN_ETHER, PRICE_OF_ETHER);
 
         for (let j = 0; j < agentsBattery.length; j++) {
-
-            //demand and supply at time i
-            demand.push(agentsBattery[j].agent.historicalDemand[i].demand);
+            demand.push(agentsBattery[j].agent.historicalDemand[i].demand); //demand and supply at time i
             if(j>=8) //battery hai end valo pe
                 supply.push(agentsBattery[j].agent.historicalSupply[i].supply);
             
@@ -361,9 +338,15 @@ async function init() {
     for(let i = 0; i < csvData.length; i++) { csvStream.write(csvData[i]);  }
     csvStream.end();
 
-    return dataToReturnApi;
+    return {
+        data: dataToReturnApi,
+        nationalGridAddress: nationalGridAddress,
+        nationalGridPrice: NATIONAL_GRID_PRICE   
+    };
 };
 
 //init();
 //run function for simulation
+
 module.exports = init;
+

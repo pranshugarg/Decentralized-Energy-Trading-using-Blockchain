@@ -1,11 +1,8 @@
-const regression = require('regression');
+const regression = require('regression'); 
 const algebra = require('algebra.js');
-var Fraction = algebra.Fraction;
-var Expression = algebra.Expression;
-var Equation = algebra.Equation;
-const WEI_IN_ETHER = 1000000000000000000;
+var Fraction = algebra.Fraction; var Expression = algebra.Expression;
+var Equation = algebra.Equation; const WEI_IN_ETHER = 1000000000000000000;
 const PRICE_OF_ETHER = 250;
-
 
 function slope(x1, y1, x2, y2) {
     if (x1 == x2) return false;
@@ -63,29 +60,25 @@ function calculateIntersection(array1, array2){
     let array2x = new Array();
     let array2y = new Array();
 
-
     let array1Polynomial = new Array();
     let array2Polynomial = new Array();
 
     let array1xsub = Array(array1DescendingPrice.length).fill(0);
-
     let array2xsub = new Array()
 
-    for(let i = 0; i< array1DescendingPrice.length; i++) {
+    for(let i = 0; i< array1DescendingPrice.length; i++) { //bids
         for(let j = 0; j <= i; j++) {
-            array1xsub[i] += array1DescendingPrice[j].amount;
+            array1xsub[i] += array1DescendingPrice[j].amount; //cumulative amount used in regression
         }
         array1x.push(array1DescendingPrice[i].amount);
         array1y.push(array1DescendingPrice[i].price);
-        array1Polynomial.push(new Array(array1xsub[i], array1y[i]));
-        
+        array1Polynomial.push(new Array(array1xsub[i], array1y[i])); // cumulative amount, price
     }
 
-    array2xsub.push(0);
-    array2y.push(0);
+    array2xsub.push(0); array2y.push(0);
     array2Polynomial.push(new Array(array2xsub[0], array2y[0]));
     
-    for(let i = 0;  i < array2AscendingPrice.length; i++) {
+    for(let i = 0;  i < array2AscendingPrice.length; i++) { //asks
         let value = 0;
         for(let j = 0; j <= i; j++) {
             value += array2AscendingPrice[j].amount;
@@ -96,51 +89,36 @@ function calculateIntersection(array1, array2){
         array2Polynomial.push(new Array(array2xsub[i + 1], array2y[i + 1])); 
     }
 
-    const result1 = regression.linear(array1Polynomial)
-    const result2 = regression.linear(array2Polynomial);
+    const result1 = regression.linear(array1Polynomial); // bids, give eqn of st. line 
+    const result2 = regression.linear(array2Polynomial); // asks
 
     let equation1 = result1.string;
     let equation2 = result2.string;
 
-    equation1 = equation1.replace(/\+ -/g, "-");
-    equation1 = equation1.replace("y =", "");
+    equation1 = equation1.replace(/\+ -/g, "-"); // (y=) htt jayega
+    equation1 = equation1.replace("y = ", "");
 
     equation2 = equation2.replace(/\+ -/g, "-");
-    equation2 = equation2.replace("y =", "");
+    equation2 = equation2.replace("y = ", "");
     
-    let equationFinal = `${equation1} = ${equation2}`;
+    let equationFinal = `${equation1} = ${equation2}`; //solving for x(intersection)
+    //ki x pe dono milegi 
     
     //put into equation and solve
     var eq = new algebra.parse(equationFinal);
-    var ans = eq.solveFor("x");
+    var ans = eq.solveFor("x"); //num and den , amount
     let possibleIntersections = [];
-    ans  =  ans.numer  / ans.denom;
-    let tempResult = result1.predict(ans);
+    ans  =  ans.numer/ans.denom; //cumulative amount
+
+    let tempResult = result1.predict(ans); // bid regression
     intersection = tempResult;
 
-    let minimum = tempResult[1];
+    let minimum = tempResult[1]; //price
     
     if(minimum == Infinity || minimum == undefined) {
         minimum = 240000000000000;
     }
-    intersection[1] = parseInt(minimum);
-
-    function convertArrayWeiToPounds(arrayWei, WEI_IN_ETHER, priceOfEther) {
-        let tempArray = new Array();
-
-        for(let i=0; i<arrayWei.length; i++) {
-            let costEther = arrayWei[i] / WEI_IN_ETHER;
-            let costPounds = costEther * ( parseFloat(priceOfEther.toFixed(18)));
-            costPounds = parseFloat(costPounds.toFixed(3));
-            tempArray.push(costPounds);
-        }
-        
-        return tempArray;
-    }
-    
-    array1y = convertArrayWeiToPounds(array1y, WEI_IN_ETHER , PRICE_OF_ETHER);
-    array2y = convertArrayWeiToPounds(array2y, WEI_IN_ETHER , PRICE_OF_ETHER);
-
+    intersection[1] = parseInt(minimum); // 1 pe price, amount ke liye
     return intersection;
 }
 

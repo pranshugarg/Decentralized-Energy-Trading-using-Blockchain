@@ -212,35 +212,63 @@ class Agent{
         if(supply >= demand) { excessEnergy = supply - demand; }  //supply i.e generated from solar panel
         if(supply < demand)  { shortageOfEnergy = demand - supply; }
 
+        // ************* RETURNING TO API ************
+        let returnData = {};
+        returnData.supply = supply;
+        returnData.demand = demand;
+        if(excessEnergy)  returnData.excessEnergy = excessEnergy;
+        if(shortageOfEnergy)  returnData.shortageEnergy = shortageOfEnergy;
+        returnData.hasBattery = this.hasBattery;
+        // **************************************************
+
         if(this.hasBattery == true) {
             if(excessEnergy > 0){ //excess energy
                 if (this.amountOfCharge <= 0.5 * this.batteryCapacity){
                     this.charge(excessEnergy); //charge if less then 50%
+
+                     // ************** RETURNING TO API ***************
+                    returnData.batteryPercentage = '< 50%';
+                    returnData.action = 'Battery Charged';
+                    // **************************************************
                 }
                 else if (0.5*this.batteryCapacity < this.amountOfCharge && this.amountOfCharge< 0.8*this.batteryCapacity ){
                     //50-80% , sell or charge
                     bidsCount = await exchange.methods.getBidsCount().call();   
-                    
+
+                    // *****************RETURNING TO API***************
+                    returnData.batteryPercentage = '50-80%';
+                    returnData.bidsCount = bidsCount;
+                    // **************************************************
+
                     if( bidsCount > 0) {  //if there are bids today
                         bid = await exchange.methods.getBid(bidsCount-1).call(); //current bids
                         if(this.historicalPrices[this.timeRow - 24] != null || this.historicalPrices[this.timeRow - 24] != undefined){
                             let averagePrice = this.calculateYesterdayAverage(); //last day avg price
                             
+                            // **************************************************
+                            returnData.yesterdayAverage = averagePrice;
+                            returnData.lastBidPrice = bid[1];
+                            // **************************************************
+
                             if(bid[1] >= averagePrice){ //sell,  if current price > last day avg
                                 await this.placeAsk(bid[1], Math.floor(excessEnergy), time);
+                                returnData.task = 'Ask Placed';
                             }
                             else if(bid[1] < averagePrice){ //else charge
                                 if( this.amountOfCharge + excessEnergy <= this.batteryCapacity) {
                                     this.charge(excessEnergy);
+                                    returnData.task = 'Charge Battery';
                                 }                           
                             }
                         }
                         else{ 
                             await this.placeAsk(bid[1], Math.floor(excessEnergy), time);
+                             returnData.task = 'Ask Placed';
                         }
                     }
                     else { //if no bid, charge
                         this.charge(excessEnergy);
+                        returnData.task = 'Excess energy & no bid => Charged Battery';
                     }
                 }
                 else if (this.amountOfCharge >= this.batteryCapacity * 0.8 ){ // >80% , sell directly, no need to charge 
@@ -248,14 +276,19 @@ class Agent{
                     price = Math.random()*0.03 + 0.04;
                     price = await this.convertToWei(price);
                     await this.placeAsk(price, Math.floor(excessEnergy), time);
+                    returnData.batteryPercentage = '> 80 %';
+                    returnData.task = 'Ask Placed';
                 }
             }
             else if (shortageOfEnergy > 0){ //energy shortage , bid or buy
                  if (this.amountOfCharge >= 0.5 * this.batteryCapacity){ 
                      //use from solar panel
                      //use remaining from battery i.e discharge
+                    returnData.batteryPercentage = '> 50%';
+                    returnData.task = 'Battery Discharged';
                     this.discharge(shortageOfEnergy); 
-                    return true;
+                    
+                    //return true;
                 }
                 else if(this.amountOfCharge < 0.5 * this.batteryCapacity && this.amountOfCharge > 0.2 * this.batteryCapacity){
                     //20-50% , submit bid if there is sufficient energy for next few hours
@@ -268,19 +301,28 @@ class Agent{
                     
                     price = await this.convertToWei(price);
                     await this.placeBuy(Math.floor(price), Math.floor(amount), time); 
+                    returnData.batteryPercentage = '20-50%';
+                    returnData.task = 'Place Bid';
                 }
                 else if (this.amountOfCharge <= 0.2 * this.batteryCapacity){ //<20%, buy from nationalGrid(no time to bid)
                     await this.buyFromNationalGrid(0.5 * this.batteryCapacity);
+                    returnData.batteryPercentage = '< 20%';
+                    returnData.task = 'Buy From National Grid';
                 }   
             }  
         }
+
 
         if(this.hasBattery == false){  //no self supply (no solar panel)
             shortageOfEnergy = demand;            
             price = Math.random()*0.03 + 0.04;
             price = await this.convertToWei(price);
             await this.placeBuy(price, shortageOfEnergy, time); 
+            returnData.batteryPercentage = 'No Battery';
+            returnData.task = 'Place Bid';
         }
+
+        return returnData;
     }
 
 //////////////////////////////////////////////////////// 199-290             

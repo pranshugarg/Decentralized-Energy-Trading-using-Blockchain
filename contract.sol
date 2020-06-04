@@ -3,14 +3,11 @@ pragma solidity ^0.4.17;
 contract Exchange {
     struct Bid {
         address owner;
-        uint price;
-        uint amount;
-        uint date;
+        uint price; uint amount; uint date;
     }
     
     Bid[] public Bids;  // what buyers are willing to pay
     Bid[] public Asks;  // what sellers are willing to take for it
-
 
     function getBid(uint index) public view returns(address, uint, uint, uint){
         return (Bids[index].owner, Bids[index].price, Bids[index].amount, Bids[index].date);
@@ -22,10 +19,8 @@ contract Exchange {
 
     function placeBid(uint _price, uint _amount, uint timestamp) public returns (bool) {
         Bid memory b;
-        b.owner = msg.sender;
-        b.price = _price;
-        b.amount = _amount;
-        b.date = timestamp;
+        b.owner = msg.sender; b.price = _price;
+        b.amount = _amount; b.date = timestamp;
 
         Bids.push(b);
         return true;
@@ -33,16 +28,13 @@ contract Exchange {
 
     function placeAsk(uint _price, uint _amount, uint timestamp) public returns (bool) {
         Bid memory a;
-        a.owner = msg.sender;
-        a.price = _price;
-        a.amount = _amount;
-        a.date = timestamp;
+        a.owner = msg.sender; a.price = _price;
+        a.amount = _amount; a.date = timestamp;
 
         Asks.push(a);
         return true;
     }
     
-
     function removeBid(uint index) public returns(uint){
         if (index >= Bids.length) return;
         
@@ -70,6 +62,6 @@ contract Exchange {
     function getAsksCount() public view returns(uint) {
         return Asks.length;
     }
-}
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    function clearMarket() public { delete Bids; delete Asks; }
+}
