@@ -6,4 +6,4 @@
 
 ### SCREENSHOTS OF FRONTEND
 
-![alt text](https://github.com/pranshugarg/Decentralized-Energy-Trading-using-Blockchain/blob/master/Screenshot%20(246).png)
+![alt text](https://github.com/pranshugarg/Decentralized-Energy-Trading-using-Blockchain/blob/master/Screenshot%20(247).png)
