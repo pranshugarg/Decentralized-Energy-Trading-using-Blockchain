@@ -10,7 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "algebra.js": "^0.2.6",
-    "async": "^3.2.0",
+    "async": "^3.2.2",
     "csv-parse": "^4.8.8",
     "ethereumjs-testrpc": "^6.0.3",
     "fast-csv": "^4.1.3",
